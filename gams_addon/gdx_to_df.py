@@ -11,7 +11,7 @@ from domain_info import DomainInfo
 from gams_add_on_exception import GamsAddOnException
 
 
-def gdx_to_df(gdx_file, name, type='L', domain_info=None):
+def gdx_to_df(gdx_file, symbol, type='L', domain_info=None):
     def __get_set(gdx_file, set_name):
         if sys.platform in ['linux2', 'darwin']:
             proc = subprocess.Popen(['gdxdump %s Symb=%s Format=csv NoHeader' % (gdx_file, set_name), ""],
@@ -45,10 +45,10 @@ def gdx_to_df(gdx_file, name, type='L', domain_info=None):
 
     if domain_info is None:
         domain_info = DomainInfo(gdx_file)
-    if name not in domain_info.symbols:
-        raise GamsAddOnException('"%s" not in Domain of "%s"' % (name, gdx_file))
+    if symbol not in domain_info.symbols:
+        raise GamsAddOnException('"%s" not in Domain of "%s"' % (symbol, gdx_file))
 
-    sets = domain_info.get_sets(name)
+    sets = domain_info.get_sets(symbol)
     index = OrderedDict()
     if sets is None:
         index['Idx'] = [1]
@@ -64,25 +64,25 @@ def gdx_to_df(gdx_file, name, type='L', domain_info=None):
             elif s == '*':
                 index[s] = ['---PLACEHOLDER---']
             else:
-                raise GamsAddOnException('Set "%s" of "%s" not in Domain of "%s"' % (s, name, gdx_file))
+                raise GamsAddOnException('Set "%s" of "%s" not in Domain of "%s"' % (s, symbol, gdx_file))
 
     # print index.values()+[['l', 'm']]
 
-    if domain_info.symbols[name][0] in ['Var', 'Equ']:
+    if domain_info.symbols[symbol][0] in ['Var', 'Equ']:
         multi_index = MultiIndex.from_product([index[s] for s in sets] + [['L', 'M', 'LO', 'UP', 'SCALE']])
         # print multi_index
-        df = DataFrame(0, index=multi_index, columns=[name])
+        df = DataFrame(0, index=multi_index, columns=[symbol])
         df.index.names = index.keys() + ['Type']
     else:
         multi_index = MultiIndex.from_product([index[s] for s in index.keys()])
-        df = DataFrame(0, index=multi_index, columns=[name])
+        df = DataFrame(0, index=multi_index, columns=[symbol])
         df.index.names = index.keys()
     if sys.platform in ['linux2', 'darwin']:
-        proc = subprocess.Popen(['gdxdump %s Symb=%s FilterDef=N' % (gdx_file, name), ""],
+        proc = subprocess.Popen(['gdxdump %s Symb=%s FilterDef=N' % (gdx_file, symbol), ""],
                                 stdout=subprocess.PIPE, shell=True,
                                 stderr=subprocess.STDOUT)
     elif sys.platform in ['win32']:
-        proc = subprocess.Popen(['gdxdump', '%s' % gdx_file, 'Symb=%s' % name, 'FilterDef=N', ''],
+        proc = subprocess.Popen(['gdxdump', '%s' % gdx_file, 'Symb=%s' % symbol, 'FilterDef=N', ''],
                                 stdout=subprocess.PIPE, shell=True,
                                 stderr=subprocess.STDOUT)
     else:
@@ -94,12 +94,12 @@ def gdx_to_df(gdx_file, name, type='L', domain_info=None):
     if err:
         raise GamsAddOnException('ERROR: {err}'.format(err=err))
     elif content is []:
-        raise GamsAddOnException('ERROR: No content found for {name}'.format(name=name))
+        raise GamsAddOnException('ERROR: No content found for {symbol}'.format(symbol=symbol))
     else:
         indices = []
         values = []
-        if domain_info.symbols[name][0] in ['Set']:
-            df[name] = False
+        if domain_info.symbols[symbol][0] in ['Set']:
+            df[symbol] = False
             for data in content:
                 if '.' in data:
                     indices.append(tuple([__int(d) for d in data.strip().split('.')]))
@@ -121,20 +121,20 @@ def gdx_to_df(gdx_file, name, type='L', domain_info=None):
                         indices.append(__int(index))
                     values.append(__float(data[1]))
         try:
-            # print 'NAME:', name, indices, values, len(values), df
+            # print 'NAME:', symbol, indices, values, len(values), df
             if len(values) == 1 and values[0] == '':
                 return df
             else:
-                # df.loc[indices, name] = values
+                # df.loc[indices, symbol] = values
                 # print df.index
-                df.loc[indices, name] = values
+                df.loc[indices, symbol] = values
                 # for i,idx in enumerate(indices):
-                #     df.loc[idx, name] = values[i]
+                #     df.loc[idx, symbol] = values[i]
         except KeyError as ke:
             print 'Warning', ke
             if '*' in df.index.names:
                 for i, idx in enumerate(indices):
-                    df.loc[idx, name] = True
+                    df.loc[idx, symbol] = True
                 df.drop('---PLACEHOLDER---', inplace=True)
 
         if type is not None and 'Type' in df.index.names:
