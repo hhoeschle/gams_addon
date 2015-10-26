@@ -70,7 +70,6 @@ def gdx_to_df(gdx_file, symbol, type='L', domain_info=None):
 
     if domain_info.symbols[symbol][0] in ['Var', 'Equ']:
         multi_index = MultiIndex.from_product([index[s] for s in sets] + [['L', 'M', 'LO', 'UP', 'SCALE']])
-        # print multi_index
         df = DataFrame(0, index=multi_index, columns=[symbol])
         df.index.names = index.keys() + ['Type']
     else:
@@ -116,6 +115,9 @@ def gdx_to_df(gdx_file, symbol, type='L', domain_info=None):
                     index = data[0]
                     if '.' in index:
                         index = tuple([__int(i) for i in index.split('.')])
+                        indices.append(index)
+                    elif index in ['L', 'M', 'UP', 'LO', 'SCALE']:
+                        index = (1, index)
                         indices.append(index)
                     else:
                         indices.append(__int(index))
