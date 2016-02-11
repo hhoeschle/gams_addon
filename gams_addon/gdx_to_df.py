@@ -70,11 +70,11 @@ def gdx_to_df(gdx_file, symbol, type='L', domain_info=None):
 
     if domain_info.symbols[symbol][0] in ['Var', 'Equ']:
         multi_index = MultiIndex.from_product([index[s] for s in sets] + [['L', 'M', 'LO', 'UP', 'SCALE']])
-        df = DataFrame(0, index=multi_index, columns=[symbol])
+        df = DataFrame(0.0, index=multi_index, columns=[symbol])
         df.index.names = index.keys() + ['Type']
     else:
         multi_index = MultiIndex.from_product([index[s] for s in index.keys()])
-        df = DataFrame(0, index=multi_index, columns=[symbol])
+        df = DataFrame(0.0, index=multi_index, columns=[symbol])
         df.index.names = index.keys()
     if sys.platform in ['linux2', 'darwin']:
         proc = subprocess.Popen(['gdxdump %s Symb=%s FilterDef=N' % (gdx_file, symbol), ""],
