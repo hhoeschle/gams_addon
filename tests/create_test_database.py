@@ -36,7 +36,7 @@ def create_test_database(gdx_file):
     for idx, s in enumerate(range(10)):
         set_param_s.add_record('s{0:03d}'.format(s + 1)).value = 10.5 - idx
 
-    set_param_s_s = db.add_parameter_dc('Param_S_S', [set_str,set_str], 'Test parameter with sets S,S')
-    set_param_s_i = db.add_parameter_dc('Param_S_I', [set_str,set_int], 'Test parameter with sets S,I')
+    set_param_s_s = db.add_parameter_dc('Param_S_S', [set_str, set_str], 'Test parameter with sets S,S')
+    set_param_s_i = db.add_parameter_dc('Param_S_I', [set_str, set_int], 'Test parameter with sets S,I')
 
     db.export(gdx_file)

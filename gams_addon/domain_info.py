@@ -1,7 +1,9 @@
 __author__ = 'Hanspeter Hoeschle <hanspeter.hoeschle@gmail.com>'
-import sys
 import subprocess
+import sys
+
 from gams_add_on_exception import GamsAddOnException
+
 
 class DomainInfo(object):
     def __init__(self, gdx_file):

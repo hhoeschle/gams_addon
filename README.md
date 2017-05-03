@@ -2,7 +2,13 @@
 python package to read out GAMS gdx files into pandas dataframes
 
 ## Installation
-Copy folder into source directory or add to python path
+
+* Open command window/terminal
+* change to location of folder containing the `setup.py` file
+`cd c:\YOUR PATH\gams_addon`
+* Install package to your local python installation
+`pip install -e .` This will also check if all required packages are installed.
+
 
 ## Usage
 ```python
@@ -21,6 +27,7 @@ If you encounter problem, send me your gdx or adapt the python code.
 
 ## History
 23/10/2015 First version put online
+03/05/2017 Added a setup file
 
 ## Credits
 Thanks to Arne for providing extensive test cases during development of first version.

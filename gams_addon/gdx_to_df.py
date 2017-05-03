@@ -1,8 +1,8 @@
 __author__ = 'Hanspeter Hoeschle <hanspeter.hoeschle@gmail.com>'
-import sys
+import csv
 import re
 import subprocess
-import csv
+import sys
 from collections import OrderedDict
 
 from pandas import DataFrame, MultiIndex

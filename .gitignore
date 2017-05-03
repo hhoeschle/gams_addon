@@ -3,3 +3,4 @@ sandbox.py
 .idea
 *.gdx
 *.pyc
+gams_addon.egg-info

@@ -1,6 +1,6 @@
 __author__ = 'Hanspeter Hoeschle <hanspeter.hoeschle@gmail.com>'
-import unittest
 import os
+import unittest
 
 import gams_addon as ga
 from create_test_database import create_test_database
@@ -8,7 +8,7 @@ from create_test_database import create_test_database
 
 class TestGdxToDf(unittest.TestCase):
     def test_read_out_sets(self):
-        gdx_file = os.path.join(os.getcwd(), 'tests', 'test_database.gdx')
+        gdx_file = os.path.join(os.getcwd(), 'test_database.gdx')
         create_test_database(gdx_file)
 
         df_s = ga.gdx_to_df(gdx_file, 'S')
@@ -34,7 +34,7 @@ class TestGdxToDf(unittest.TestCase):
         self.assertEqual(len(df_subs_empty[df_subs_empty['SubSEmpty']]), 0)
 
     def test_read_out_parameters(self):
-        gdx_file = os.path.join(os.getcwd(), 'tests', 'test_database.gdx')
+        gdx_file = os.path.join(os.getcwd(), 'test_database.gdx')
         create_test_database(gdx_file)
 
         df_param_s = ga.gdx_to_df(gdx_file, 'Param_S')
