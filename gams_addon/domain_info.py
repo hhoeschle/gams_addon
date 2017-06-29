@@ -17,7 +17,9 @@ class DomainInfo(object):
                                     stdout=subprocess.PIPE, shell=True,
                                     stderr=subprocess.STDOUT)
         elif sys.platform in ['win32']:
-            proc = subprocess.Popen(['gdxdump', '%s' % gdx_file, 'Symbols', ''],
+            cmd = ['gdxdump', '%s' % gdx_file, 'Symbols', '']
+            # print " ".join(cmd)
+            proc = subprocess.Popen(cmd,
                                     stdout=subprocess.PIPE, shell=True,
                                     stderr=subprocess.STDOUT)
         else:

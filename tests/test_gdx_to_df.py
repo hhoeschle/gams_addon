@@ -87,23 +87,41 @@ class TestGdxToDf(unittest.TestCase):
         self.assertEqual(df, 10)
         self.assertEqual(type(df), float)
 
-        df_param_s = ga.gdx_to_df(gdx_file, 'Param_S', domain_info)
-        self.assertEqual(len(df_param_s), 10)
-        self.assertEqual(sum(df_param_s['Param_S']), 60.)
-        self.assertEqual(df_param_s.index.names, ['S'])
-        self.assertEqual(df_param_s.columns, ['Param_S'])
+        # Parameters defined over sets
+        df = ga.gdx_to_df(gdx_file, 'Param_S', domain_info)
+        self.assertEqual(len(df), 10)
+        self.assertEqual(sum(df['Param_S']), 60.)
+        self.assertEqual(df.index.names, ['S'])
+        self.assertEqual(df.columns, ['Param_S'])
 
-        df_param_s_s = ga.gdx_to_df(gdx_file, 'Param_S_S', domain_info)
-        self.assertEqual(len(df_param_s_s), 100)
-        self.assertEqual(sum(df_param_s_s['Param_S_S']), 0)
-        self.assertEqual(df_param_s_s.index.names, ['S', 'SS'])
-        self.assertEqual(df_param_s_s.columns, ['Param_S_S'])
+        df = ga.gdx_to_df(gdx_file, 'Param_S_S', domain_info)
+        self.assertEqual(len(df), 100)
+        self.assertEqual(sum(df['Param_S_S']), 1550)
+        self.assertEqual(df.index.names, ['S', 'S_01'])
+        self.assertEqual(df.columns, ['Param_S_S'])
 
         df_param_s_i = ga.gdx_to_df(gdx_file, 'Param_S_I', domain_info)
         self.assertEqual(len(df_param_s_i), 100)
-        self.assertEqual(sum(df_param_s_i['Param_S_I']), 0)
+        self.assertEqual(sum(df_param_s_i['Param_S_I']), 1550)
         self.assertEqual(df_param_s_i.index.names, ['S', 'I'])
         self.assertEqual(df_param_s_i.columns, ['Param_S_I'])
+
+        df = ga.gdx_to_df(gdx_file, 'Param_S_E', domain_info)
+        self.assertTrue(df.empty)
+        self.assertEqual(df.index.names, ['S', 'E'])
+        self.assertEqual(df.columns, ['Param_S_E'])
+
+        df = ga.gdx_to_df(gdx_file, 'Param_P1', domain_info)
+        self.assertEqual(len(df), 10)
+        self.assertEqual(sum(df['Param_P1']), 155)
+        self.assertEqual(df.index.names, ['Dim1'])
+        self.assertEqual(df.columns, ['Param_P1'])
+
+        df = ga.gdx_to_df(gdx_file, 'Param_P2', domain_info)
+        self.assertEqual(len(df), 100)
+        self.assertEqual(sum(df['Param_P2']), 1550)
+        self.assertEqual(df.index.names, ['Dim1', 'Dim2'])
+        self.assertEqual(df.columns, ['Param_P2'])
 
     def test_read_out_variables(self):
         gdx_file = os.path.join(os.getcwd(), 'test_database.gdx')
@@ -117,4 +135,16 @@ class TestGdxToDf(unittest.TestCase):
 
         df = ga.gdx_to_df(gdx_file, 'Scalar_V1', domain_info=domain_info, gams_type="lo")
         self.assertEqual(df, 0)
+        self.assertEqual(type(df), float)
+
+        df = ga.gdx_to_df(gdx_file, 'Scalar_V1', domain_info=domain_info, gams_type="up")
+        self.assertEqual(df, 1000)
+        self.assertEqual(type(df), float)
+
+        df = ga.gdx_to_df(gdx_file, 'Scalar_V1', domain_info=domain_info, gams_type="M")
+        self.assertEqual(df, 2)
+        self.assertEqual(type(df), float)
+
+        df = ga.gdx_to_df(gdx_file, 'Scalar_V1', domain_info=domain_info, gams_type="scale")
+        self.assertEqual(df, 1)
         self.assertEqual(type(df), float)

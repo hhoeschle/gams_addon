@@ -14,6 +14,8 @@
 
 ### Parameters
 
+- Scalars = Parameters with dimension 0 -> returns a float value
+
 ### Variables
 
 ### Equations

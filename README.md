@@ -32,4 +32,4 @@ If you encounter problem, send me your gdx or adapt the python code.
 
 ## Credits
 * Thanks to Arne for providing extensive test cases during development of first version.
-* Thanks to Kris for providing extensive test cases during development of second version.
+* Thanks to Kris and Andreas for providing extensive test cases during development of second version.

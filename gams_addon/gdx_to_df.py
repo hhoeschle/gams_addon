@@ -69,8 +69,10 @@ def __gdx_to_df_equ(gdx_file, symbol, domain_info, gams_type, fillna):
         if sets:
             for s in sets:
                 ss = s
+                i = 1
                 while ss in set_names:
-                    ss = ss + s[-1]
+                    ss = "%s_%02d" % (s, i)
+                    i += 1
                 set_names.append(ss)
                 if s != "*":
                     idx = __gdx_to_df_set(gdx_file, s, domain_info)
@@ -141,34 +143,43 @@ def __gdx_to_df_var(gdx_file, symbol, domain_info, gams_type, fillna):
 
 def __gdx_to_df_par(gdx_file, symbol, domain_info, fillna):
     sets = domain_info.get_sets(symbol)
+
     if sets is None:
         return __gdx_to_df_scalar(gdx_file, symbol)
 
-    set_names = []
-    set_index = []
+    if any([s == "*" for s in sets]):
+        (out, err) = __call_gdxdump(gdx_file, symbol)
+        df = pd.read_csv(StringIO(out), sep=",", index_col=range(len(sets)))
+        df.columns = [symbol]
+        return df
+    else:
+        set_names = []
+        set_index = []
 
-    for s in sets:
-        ss = s
-        while ss in set_names:
-            ss = ss + s[-1]
-        set_names.append(ss)
-        idx = __gdx_to_df_set(gdx_file, s, domain_info)
-        idx = idx[idx[s]].index
-        set_index.append(list(idx))
+        for s in sets:
+            ss = s
+            i = 1
+            while ss in set_names:
+                ss = "%s_%02d" % (s, i)
+                i += 1
+            set_names.append(ss)
+            idx = __gdx_to_df_set(gdx_file, s, domain_info)
+            idx = idx[idx[s]].index
+            set_index.append(list(idx))
 
-    df = pd.DataFrame(index=pd.MultiIndex.from_product(set_index))
-    df.index.names = set_names
-    df[symbol] = fillna
+        df = pd.DataFrame(index=pd.MultiIndex.from_product(set_index))
+        df.index.names = set_names
+        df[symbol] = fillna
 
-    (out, err) = __call_gdxdump(gdx_file, symbol)
-    df_in = pd.read_csv(StringIO(out), sep=",")
+        (out, err) = __call_gdxdump(gdx_file, symbol)
+        df_in = pd.read_csv(StringIO(out), sep=",")
 
-    index = list(df_in.columns[:-1])
-    df_in.set_index(index, inplace=True)
+        index = list(df_in.columns[:-1])
+        df_in.set_index(index, inplace=True)
 
-    df[symbol] = df_in["Val"]
-    df.fillna(fillna, inplace=True)
-    return df
+        df[symbol] = df_in["Val"]
+        df.fillna(fillna, inplace=True)
+        return df
 
 
 def __gdx_to_df_scalar(gdx_file, symbol, gams_type="L", fillna=0.0):
@@ -200,7 +211,17 @@ def __gdx_to_df_set(gdx_file, symbol, domain_info):
             df.index.names = [symbol]
         return df
 
-    elif sets != ["*"] and [symbol] != sets:
+    # Unique set
+    elif [symbol] == sets:
+        set_names = sets
+        (out, err) = __call_gdxdump(gdx_file, symbol)
+        df = pd.read_csv(StringIO(out), sep=",")
+        df.index.names = set_names
+        df[symbol] = True
+        return df
+
+    # Super sets or others
+    elif [symbol] != sets:
         set_names = sets
         set_index = []
         for s in sets:

@@ -62,13 +62,37 @@ def create_test_database(gdx_file):
     s = db.add_parameter('Scalar_P2', 0, 'Test scalar parameter')
     s.add_record().value = 10.0
 
-
     param_s = db.add_parameter_dc('Param_S', [set_str], 'Test parameter with set S')
     for idx, s in enumerate(range(10)):
         param_s.add_record('s{0:03d}'.format(s + 1)).value = 10.5 - idx
 
-    set_param_s_s = db.add_parameter_dc('Param_S_S', [set_str, set_str], 'Test parameter with sets S,S')
-    set_param_s_i = db.add_parameter_dc('Param_S_I', [set_str, set_int], 'Test parameter with sets S,I')
+    param_s_s = db.add_parameter_dc('Param_S_S', [set_str, set_str], 'Test parameter with sets S,S')
+    for i in range(10):
+        for ii in range(10):
+            idx = ('s{0:03d}'.format(i + 1), 's{0:03d}'.format(ii + 1))
+            param_s_s.add_record(idx).value = 15.5
+
+    param_s_i = db.add_parameter_dc('Param_S_I', [set_str, set_int], 'Test parameter with sets S,I')
+    for i in range(10):
+        for ii in range(10):
+            idx = ('s{0:03d}'.format(i + 1), '{0:d}'.format(ii + 1))
+            param_s_i.add_record(idx).value = 15.5
+
+    param_s_e = db.add_parameter_dc('Param_S_E', [set_str, set_empty], 'Test parameter with sets S,E')
+
+
+    param_p = db.add_parameter("Param_P1", 1, "Test parameter")
+    for i in range(10):
+        idx = ('{0:d}'.format(i + 1))
+        param_p.add_record(idx).value = 15.5
+
+    param_p = db.add_parameter("Param_P2", 2, "Test parameter")
+    for i in range(10):
+        for ii in range(10):
+            idx = ('{0:d}'.format(i + 1), '{0:d}'.format(ii + 1))
+            param_p.add_record(idx).value = 15.5
+
+
 
     # Variables
     # Scalar
@@ -78,8 +102,5 @@ def create_test_database(gdx_file):
     s_r.lower = 0
     s_r.upper = 1000
     s_r.marginal = 2
-    # s.add_record().level = 10
-
-
 
     db.export(gdx_file)
