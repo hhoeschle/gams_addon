@@ -173,9 +173,7 @@ def __gdx_to_df_par(gdx_file, symbol, domain_info, fillna):
 
 def __gdx_to_df_scalar(gdx_file, symbol, gams_type="L", fillna=0.0):
     (out, err) = __call_gdxdump(gdx_file, symbol, gams_type)
-    print out
     df = pd.read_csv(StringIO(out), sep=",")
-    print df.head()
     if gams_type == "L":
         return float(df.loc[0, "Val"])
     elif gams_type == "M":
