@@ -1,147 +1,256 @@
 __author__ = 'Hanspeter Hoeschle <hanspeter.hoeschle@gmail.com>'
-import csv
-import re
+__date__ = "26/06/2017"
 import subprocess
 import sys
-from collections import OrderedDict
+from StringIO import StringIO
 
-from pandas import DataFrame, MultiIndex
+import pandas as pd
 
 from domain_info import DomainInfo
 from gams_add_on_exception import GamsAddOnException
 
 
-def gdx_to_df(gdx_file, symbol, type='L', domain_info=None):
-    def __get_set(gdx_file, set_name):
-        if sys.platform in ['linux2', 'darwin']:
-            proc = subprocess.Popen(['gdxdump %s Symb=%s Format=csv NoHeader' % (gdx_file, set_name), ""],
-                                    stdout=subprocess.PIPE, shell=True,
-                                    stderr=subprocess.STDOUT)
-        elif sys.platform in ['win32']:
-            proc = subprocess.Popen(['gdxdump', '%s' % gdx_file, 'Symb=%s' % set_name, 'Format=csv', 'NoHeader', ''],
-                                    stdout=subprocess.PIPE, shell=True,
-                                    stderr=subprocess.STDOUT)
-        else:
-            raise GamsAddOnException('ERROR {platform} not handled'.format(platform=sys.platform))
-        (out, err) = proc.communicate()
-        try:
-            csv_in = csv.reader(out.split('\n'), delimiter=',')
-            return [int(row[0]) for row in csv_in if row]
-        except ValueError:
-            csv_in = csv.reader(out.split('\n'), delimiter=',')
-            return [row[0] for row in csv_in if row]
-
-    def __int(v):
-        try:
-            return int(v)
-        except ValueError:
-            return v
-
-    def __float(v):
-        try:
-            return float(v)
-        except ValueError:
-            return v
-
+def gdx_to_df(gdx_file, symbol, gams_type='L', domain_info=None, fillna=0.0):
+    # Derive domain info
     if domain_info is None:
         domain_info = DomainInfo(gdx_file)
     if symbol not in domain_info.symbols:
         raise GamsAddOnException('"%s" not in Domain of "%s"' % (symbol, gdx_file))
+    symbol_type = domain_info.symbols[symbol][0]
 
+    # Sets
+    if symbol_type == "Set":
+        return __gdx_to_df_set(gdx_file, symbol, domain_info)
+
+    # Parameter
+    if symbol_type == "Par":
+        return __gdx_to_df_par(gdx_file, symbol, domain_info, fillna)
+
+    # Variable
+    if symbol_type == "Var":
+        return __gdx_to_df_var(gdx_file, symbol, domain_info, gams_type.upper(), fillna)
+
+    # Equation
+    if symbol_type == "Equ":
+        return __gdx_to_df_equ(gdx_file, symbol, domain_info, gams_type.upper(), fillna)
+
+
+def __gdx_to_df_equ(gdx_file, symbol, domain_info, gams_type, fillna):
     sets = domain_info.get_sets(symbol)
-    index = OrderedDict()
+    if sets and any([s == "*" for s in sets]):
+        print "-" * 80
+        print "WARNING: Sets have not been specified for: %s" % symbol
+        print "-" * 80
+        (out, err) = __call_gdxdump(gdx_file, symbol, gams_type)
+        df_in = pd.read_csv(StringIO(out), sep=",")
+        if gams_type == "L":
+            idx = list(df_in.columns[:-1])
+            df_in.set_index(idx, inplace=True)
+            df_in.columns = [symbol]
+            return df_in
+        else:
+            idx = list(df_in.columns[:-5])
+            df_in.set_index(idx, inplace=True)
+            if gams_type == "M":
+                df_in[symbol] = df_in["Marginal"]
+            elif gams_type == "LO":
+                df_in[symbol] = df_in["Lower"]
+            elif gams_type == "UP":
+                df_in[symbol] = df_in["Upper"]
+            elif gams_type == "SCALE":
+                df_in[symbol] = df_in["Scale"]
+            else:
+                raise GamsAddOnException("gams_type %s not defined" % gams_type)
+            return pd.DataFrame(df_in[symbol])
+    else:
+        set_names = []
+        set_index = []
+
+        if sets:
+            for s in sets:
+                ss = s
+                while ss in set_names:
+                    ss = ss + s[-1]
+                set_names.append(ss)
+                if s != "*":
+                    idx = __gdx_to_df_set(gdx_file, s, domain_info)
+                    idx = idx[idx[s]].index
+                else:
+                    idx = [0]
+                set_index.append(list(idx))
+                df = pd.DataFrame(index=pd.MultiIndex.from_product(set_index))
+                df.index.names = set_names
+        else:
+            return __gdx_to_df_scalar(gdx_file, symbol, gams_type)
+
+        df[symbol] = fillna
+
+        (out, err) = __call_gdxdump(gdx_file, symbol, gams_type)
+        df_in = pd.read_csv(StringIO(out), sep=",")
+        if gams_type == "L":
+            df_in.columns = df.index.names + [symbol]
+        else:
+            exit()
+
+        df[symbol] = df_in[symbol]
+        return df.fillna(fillna)
+
+
+def __gdx_to_df_var(gdx_file, symbol, domain_info, gams_type, fillna):
+    sets = domain_info.get_sets(symbol)
     if sets is None:
-        index['Idx'] = [1]
-        sets = ['Idx']
+        return __gdx_to_df_scalar(gdx_file, symbol, gams_type=gams_type, fillna=fillna)
+
+    set_names = []
+    set_index = []
+
+    for s in sets:
+        ss = s
+        while ss in set_names:
+            ss = ss + s[-1]
+        set_names.append(ss)
+        idx = __gdx_to_df_set(gdx_file, s, domain_info)
+        idx = idx[idx[s]].index
+        set_index.append(list(idx))
+    df = pd.DataFrame(index=pd.MultiIndex.from_product(set_index))
+    df.index.names = set_names
+    df[symbol] = fillna
+
+    (out, err) = __call_gdxdump(gdx_file, symbol, gams_type)
+    df_in = pd.read_csv(StringIO(out), sep=",")
+    if gams_type == "L":
+        index = list(df_in.columns[:-1])
+        df_in.set_index(index, inplace=True)
+        df[symbol] = df_in["Val"]
     else:
+        index = list(df_in.columns[:-5])
+        df_in.set_index(index, inplace=True)
+        if gams_type == "M":
+            df[symbol] = df_in["Marginal"]
+        elif gams_type == "LO":
+            df[symbol] = df_in["Lower"]
+        elif gams_type == "UP":
+            df[symbol] = df_in["Upper"]
+        elif gams_type == "SCALE":
+            df[symbol] = df_in["Scale"]
+        else:
+            raise GamsAddOnException("gams_type %s not defined" % gams_type)
+
+    return df.fillna(fillna)
+
+
+def __gdx_to_df_par(gdx_file, symbol, domain_info, fillna):
+    sets = domain_info.get_sets(symbol)
+    if sets is None:
+        return __gdx_to_df_scalar(gdx_file, symbol)
+
+    set_names = []
+    set_index = []
+
+    for s in sets:
+        ss = s
+        while ss in set_names:
+            ss = ss + s[-1]
+        set_names.append(ss)
+        idx = __gdx_to_df_set(gdx_file, s, domain_info)
+        idx = idx[idx[s]].index
+        set_index.append(list(idx))
+
+    df = pd.DataFrame(index=pd.MultiIndex.from_product(set_index))
+    df.index.names = set_names
+    df[symbol] = fillna
+
+    (out, err) = __call_gdxdump(gdx_file, symbol)
+    df_in = pd.read_csv(StringIO(out), sep=",")
+
+    index = list(df_in.columns[:-1])
+    df_in.set_index(index, inplace=True)
+
+    df[symbol] = df_in["Val"]
+    df.fillna(fillna, inplace=True)
+    return df
+
+
+def __gdx_to_df_scalar(gdx_file, symbol, gams_type="L", fillna=0.0):
+    (out, err) = __call_gdxdump(gdx_file, symbol, gams_type)
+    print out
+    df = pd.read_csv(StringIO(out), sep=",")
+    print df.head()
+    if gams_type == "L":
+        return float(df.loc[0, "Val"])
+    elif gams_type == "M":
+        return float(df.loc[0, "Marginal"])
+    elif gams_type == "LO":
+        return float(df.loc[0, "Lower"])
+    elif gams_type == "UP":
+        return float(df.loc[0, "Upper"])
+    elif gams_type == "SCALE":
+        return float(df.loc[0, "Scale"])
+    else:
+        raise GamsAddOnException("gams_type %s not defined" % gams_type)
+
+
+def __gdx_to_df_set(gdx_file, symbol, domain_info):
+    sets = domain_info.get_sets(symbol)
+
+    # Set with a undefined set, also 1-dimensional sets
+    if any([s == "*" for s in sets]):
+        (out, err) = __call_gdxdump(gdx_file, symbol)
+        df = pd.read_csv(StringIO(out), sep=",", index_col=range(len(sets)))
+        df[symbol] = True
+        if len(sets) == 1:
+            df.index.names = [symbol]
+        return df
+
+    elif sets != ["*"] and [symbol] != sets:
+        set_names = sets
+        set_index = []
         for s in sets:
-            if s in domain_info.symbols:
-                set_values = __get_set(gdx_file, s)
-                set_name = s
-                while set_name in index.keys():
-                    set_name = set_name + s
-                index[set_name] = set_values
-            elif s == '*':
-                index[s] = ['---PLACEHOLDER---']
-            else:
-                raise GamsAddOnException('Set "%s" of "%s" not in Domain of "%s"' % (s, symbol, gdx_file))
+            set_index.append(list(__gdx_to_df_set(gdx_file, s, domain_info).index))
 
-    # print index.values()+[['l', 'm']]
+        df = pd.DataFrame(index=pd.MultiIndex.from_product(set_index))
+        df.index.names = set_names
+        (out, err) = __call_gdxdump(gdx_file, symbol)
+        df_in = pd.read_csv(StringIO(out), sep=",")
+        df_in[symbol] = True
+        index = list(df_in.columns[:-1])
+        df_in.set_index(index, inplace=True)
+        df = pd.merge(df, df_in, how="left", left_index=True, right_index=True).fillna(False)
+        df.index.names = set_names
+        return df
 
-    if domain_info.symbols[symbol][0] in ['Var', 'Equ']:
-        multi_index = MultiIndex.from_product([index[s] for s in sets] + [['L', 'M', 'LO', 'UP', 'SCALE']])
-        df = DataFrame(0.0, index=multi_index, columns=[symbol])
-        df.index.names = index.keys() + ['Type']
-    else:
-        multi_index = MultiIndex.from_product([index[s] for s in index.keys()])
-        df = DataFrame(0.0, index=multi_index, columns=[symbol])
-        df.index.names = index.keys()
-    if sys.platform in ['linux2', 'darwin']:
-        proc = subprocess.Popen(['gdxdump %s Symb=%s FilterDef=N' % (gdx_file, symbol), ""],
-                                stdout=subprocess.PIPE, shell=True,
-                                stderr=subprocess.STDOUT)
-    elif sys.platform in ['win32']:
-        proc = subprocess.Popen(['gdxdump', '%s' % gdx_file, 'Symb=%s' % symbol, 'FilterDef=N', ''],
-                                stdout=subprocess.PIPE, shell=True,
-                                stderr=subprocess.STDOUT)
-    else:
-        raise GamsAddOnException('ERROR {platform} not handled'.format(platform=sys.platform))
-    (out, err) = proc.communicate()
-    out = out.replace('\n', '')
-    content = re.search(r'/.*/', out).group(0)[1:-1].replace('\'', '').strip().split(',')
 
-    if err:
-        raise GamsAddOnException('ERROR: {err}'.format(err=err))
-    elif content is []:
-        raise GamsAddOnException('ERROR: No content found for {symbol}'.format(symbol=symbol))
     else:
-        indices = []
-        values = []
-        if domain_info.symbols[symbol][0] in ['Set']:
-            df[symbol] = False
-            for data in content:
-                if '.' in data:
-                    indices.append(tuple([__int(d) for d in data.strip().split('.')]))
-                else:
-                    indices.append(__int(data.strip()))
-                values.append(True)
+        raise GamsAddOnException("Check handling of sets %s", sets)
+
+
+def __call_gdxdump(gdx_file, symbol, gams_type="L"):
+    if gams_type == "L":
+        if sys.platform in ['linux2', 'darwin']:
+            proc = subprocess.Popen(
+                ['gdxdump %s Symb=%s Format=csv Delim=comma FilterDef=N EpsOut=0.0' % (gdx_file, symbol), ""],
+                stdout=subprocess.PIPE, shell=True,
+                stderr=subprocess.STDOUT)
+        elif sys.platform in ['win32']:
+            proc = subprocess.Popen(
+                ['gdxdump', '%s' % gdx_file, 'Symb=%s' % symbol, 'FilterDef=N', 'Format=csv', 'Delim=comma',
+                 'EpsOut=0.0'],
+                stdout=subprocess.PIPE, shell=True,
+                stderr=subprocess.STDOUT)
         else:
-            for data in content:
-                data = data.strip().split(' ')
-                if len(data) == 1:
-                    indices.append(1)
-                    values.append(__float(data[0]))
-                else:
-                    index = data[0]
-                    if '.' in index:
-                        index = tuple([__int(i) for i in index.split('.')])
-                        indices.append(index)
-                    elif index in ['L', 'M', 'UP', 'LO', 'SCALE']:
-                        index = (1, index)
-                        indices.append(index)
-                    else:
-                        indices.append(__int(index))
-                    values.append(__float(data[1]))
-        try:
-            # print 'NAME:', symbol, indices, values, len(values), df
-            if len(values) == 1 and values[0] == '':
-                return df
-            else:
-                # df.loc[indices, symbol] = values
-                # print df.index
-                df.loc[indices, symbol] = values
-                # for i,idx in enumerate(indices):
-                #     df.loc[idx, symbol] = values[i]
-        except KeyError as ke:
-            print 'Warning', ke
-            if '*' in df.index.names:
-                for i, idx in enumerate(indices):
-                    df.loc[idx, symbol] = True
-                df.drop('---PLACEHOLDER---', inplace=True)
-
-        if type is not None and 'Type' in df.index.names:
-            # print type
-            # print df.head()
-            return df.query('Type == "%s"' % type)
+            raise GamsAddOnException('ERROR {platform} not handled'.format(platform=sys.platform))
+    else:
+        if sys.platform in ['linux2', 'darwin']:
+            proc = subprocess.Popen(
+                ['gdxdump %s Symb=%s Format=csv Delim=comma FilterDef=N EpsOut=0.0' % (gdx_file, symbol), ""],
+                stdout=subprocess.PIPE, shell=True,
+                stderr=subprocess.STDOUT)
+        elif sys.platform in ['win32']:
+            cmd = ['gdxdump', '%s' % gdx_file, 'Symb=%s' % symbol, 'FilterDef=N', 'Format=csv', 'Delim=comma',
+                   'CSVAllFields', 'EpsOut=0.0']
+            proc = subprocess.Popen(cmd,
+                                    stdout=subprocess.PIPE, shell=True,
+                                    stderr=subprocess.STDOUT)
         else:
-            return df
+            raise GamsAddOnException('ERROR {platform} not handled'.format(platform=sys.platform))
+    return proc.communicate()

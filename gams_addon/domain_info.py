@@ -1,4 +1,5 @@
 __author__ = 'Hanspeter Hoeschle <hanspeter.hoeschle@gmail.com>'
+__date__ = "26/06/2017"
 import subprocess
 import sys
 
@@ -65,12 +66,13 @@ class DomainInfo(object):
 
     def get_sets(self, symbol):
         if symbol in self.symbols:
+            if self.symbols[symbol][0] == "Alias":
+                return self.symbols[symbol][2]
             return self.symbols[symbol][1]
         else:
             return None
 
     def check_alias(self, symbol):
-        print self.symbols[symbol][1]
         if self.symbols[symbol][1]:
             return self.symbols[symbol][1]
         else:

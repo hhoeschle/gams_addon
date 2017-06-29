@@ -4,3 +4,4 @@ sandbox.py
 *.gdx
 *.pyc
 gams_addon.egg-info
+tests/own

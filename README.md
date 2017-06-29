@@ -26,8 +26,10 @@ The testing needs to be extended.
 If you encounter problem, send me your gdx or adapt the python code.
 
 ## History
-23/10/2015 First version put online
-03/05/2017 Added a setup file
+* 23/10/2015 First version put online
+* 03/05/2017 Added a setup file
+* 29/06/2017 Refactoring of gdx_to_df
 
 ## Credits
-Thanks to Arne for providing extensive test cases during development of first version.
+* Thanks to Arne for providing extensive test cases during development of first version.
+* Thanks to Kris for providing extensive test cases during development of second version.
