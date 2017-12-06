@@ -123,18 +123,23 @@ def __gdx_to_df_var(gdx_file, symbol, domain_info, gams_type, fillna):
     if gams_type == "L":
         index = list(df_in.columns[:-1])
         df_in.set_index(index, inplace=True)
-        df[symbol] = df_in["Val"]
+        for idx in df_in.index:
+            df.loc[idx, symbol] = df_in.loc[idx, "Val"]
     else:
         index = list(df_in.columns[:-5])
         df_in.set_index(index, inplace=True)
         if gams_type == "M":
-            df[symbol] = df_in["Marginal"]
+            for idx in df_in.index:
+                df.loc[idx, symbol] = df_in.loc[idx, "Marginal"]
         elif gams_type == "LO":
-            df[symbol] = df_in["Lower"]
+            for idx in df_in.index:
+                df.loc[idx, symbol] = df_in.loc[idx, "Lower"]
         elif gams_type == "UP":
-            df[symbol] = df_in["Upper"]
+            for idx in df_in.index:
+                df.loc[idx, symbol] = df_in.loc[idx, "Upper"]
         elif gams_type == "SCALE":
-            df[symbol] = df_in["Scale"]
+            for idx in df_in.index:
+                df.loc[idx, symbol] = df_in.loc[idx, "Scale"]
         else:
             raise GamsAddOnException("gams_type %s not defined" % gams_type)
 
@@ -177,7 +182,8 @@ def __gdx_to_df_par(gdx_file, symbol, domain_info, fillna):
         index = list(df_in.columns[:-1])
         df_in.set_index(index, inplace=True)
 
-        df[symbol] = df_in["Val"]
+        for idx in df_in.index:
+            df.loc[idx, symbol] = df_in.loc[idx, "Val"]
         df.fillna(fillna, inplace=True)
         return df
 
@@ -216,7 +222,7 @@ def __gdx_to_df_set(gdx_file, symbol, domain_info):
         set_names = sets
         (out, err) = __call_gdxdump(gdx_file, symbol)
         df = pd.read_csv(StringIO(out), sep=",")
-        df.index.names = set_names
+        df.set_index(sets, inplace=True)
         df[symbol] = True
         return df
 
@@ -229,12 +235,14 @@ def __gdx_to_df_set(gdx_file, symbol, domain_info):
 
         df = pd.DataFrame(index=pd.MultiIndex.from_product(set_index))
         df.index.names = set_names
+        df[symbol] = False
+
         (out, err) = __call_gdxdump(gdx_file, symbol)
         df_in = pd.read_csv(StringIO(out), sep=",")
         df_in[symbol] = True
         index = list(df_in.columns[:-1])
         df_in.set_index(index, inplace=True)
-        df = pd.merge(df, df_in, how="left", left_index=True, right_index=True).fillna(False)
+        df.loc[df_in.index, symbol] = True
         df.index.names = set_names
         return df
 

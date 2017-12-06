@@ -24,7 +24,7 @@ class TestGdxToDf(unittest.TestCase):
         self.assertEqual(len(df[df['SubS']]), 5)
         self.assertEqual(df.index.nlevels, 1)
         self.assertEqual(df.columns.values, ["SubS"])
-        self.assertEqual(df.index.name, "S")
+        self.assertEqual(df.index.names[0], "S")
 
         df = ga.gdx_to_df(gdx_file, 'I')
         self.assertEqual(len(df), 10)
@@ -37,7 +37,7 @@ class TestGdxToDf(unittest.TestCase):
         self.assertEqual(len(df[df['SubI']]), 5)
         self.assertEqual(df.index.nlevels, 1)
         self.assertEqual(df.columns.values, ["SubI"])
-        self.assertEqual(df.index.name, "I")
+        self.assertEqual(df.index.names[0], "I")
 
         df = ga.gdx_to_df(gdx_file, 'SubSI', domain_info)
         self.assertEqual(len(df), 100)
@@ -148,3 +148,12 @@ class TestGdxToDf(unittest.TestCase):
         df = ga.gdx_to_df(gdx_file, 'Scalar_V1', domain_info=domain_info, gams_type="scale")
         self.assertEqual(df, 1)
         self.assertEqual(type(df), float)
+
+
+    def test_own_gdx_files(self):
+        gdx_file = os.path.join('C:/Users/hhoschle/Desktop/kris_master_thesis/.gams/output_data_ref_0.gdx')
+
+        # df = ga.gdx_to_df(gdx_file, "Model_stats")
+        # df = ga.gdx_to_df(gdx_file, "cap")
+        # print df
+
